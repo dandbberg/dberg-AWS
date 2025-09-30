@@ -1,0 +1,63 @@
+name: Deploy Helm Chart to EKS
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+env:
+  AWS_REGION: eu-west-1
+  KUBE_NAMESPACE: default
+  TF_WORKING_DIR: ./Deployment
+
+jobs:
+  deploy:
+    name: Render and Deploy Helm Chart
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'latest'
+
+      - name: Setup Helm
+        uses: azure/setup-helm@v3
+        with:
+          version: 'latest'
+
+      - name: Update kubeconfig for EKS cluster
+        run: |
+          aws eks update-kubeconfig --region $AWS_REGION --name dberg-perf-eks
+
+      - name: Render Helm template for app1
+        run: |
+          helm repo add stable https://charts.helm.sh/stable
+          helm dependency update ./Deployment/app-generic-chart
+          applist="app1 app2 app3"
+
+          for app in $applist; do
+            helm template "$app" ./Deployment/app-generic-chart \
+              --values "./Deployment/app-values/values-$app.yaml" \
+              > "./Deployment/deployment-$app.yaml"
+          done
+
+
+      - name: Apply Helm rendered YAML to Kubernetes cluster
+        run: |
+          applist="deployment-app1 deployment-app2 deployment-app3"
+
+          for app in $applist; do
+            kubectl apply -f "./Deployment/$app.yaml" -n "$KUBE_NAMESPACE"
+          done

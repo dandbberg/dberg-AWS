@@ -1,0 +1,5 @@
+.terraform/
+Terraform/.terraform/
+Infra/.terraform/
+Docker/.terraform/
+tfsate-bucket/.terraform/

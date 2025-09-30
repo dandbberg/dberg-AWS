@@ -1,0 +1,12 @@
+name: app3
+
+replicaCount: 1
+
+image:
+  repository: 919649607464.dkr.ecr.eu-west-1.amazonaws.com/dberg-ecr2
+  tag: task2-latest
+  pullPolicy: IfNotPresent
+
+ingress:
+  enabled: true
+  path: /app3
